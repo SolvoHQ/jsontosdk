@@ -431,6 +431,11 @@ const data: User = UserSchema.parse(await res.json());</pre>
         function track(name, detail) {
           try { window.dispatchEvent(new CustomEvent('jsontosdk:' + name, { detail })); } catch (_) {}
           try { window.va && window.va('event', { name, data: detail }); } catch (_) {}
+          try {
+            if (window.goatcounter && typeof window.goatcounter.count === 'function') {
+              window.goatcounter.count({ path: name, event: true, title: name });
+            }
+          } catch (_) {}
         }
 
         document.querySelectorAll('.copy-btn').forEach((btn) => {
