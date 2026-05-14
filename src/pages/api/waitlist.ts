@@ -76,6 +76,43 @@ export const POST: APIRoute = async ({ request }) => {
     );
   }
 
+  // Auto-reply to the user — fire-and-forget. Any failure here is swallowed:
+  // the inbound notification already succeeded, so the waitlist signup is
+  // captured. The user-facing auto-reply is a best-effort "personal touch"
+  // that also seeds Q3 reply-thread evidence; it must NEVER fail the request.
+  try {
+    const replyText = [
+      'Hi,',
+      '',
+      "Thanks for joining the jsontosdk waitlist — you're in line for v2 (API + CLI).",
+      '',
+      "Quick favor: what API or endpoint are you trying to type? Just hit reply with a URL or the JSON shape, and I'll prioritize that pattern when v2 ships.",
+      '',
+      '— jsontosdk',
+    ].join('\n');
+    const replyRes = await fetch('https://api.resend.com/emails', {
+      method: 'POST',
+      headers: {
+        'authorization': `Bearer ${apiKey}`,
+        'content-type': 'application/json',
+      },
+      body: JSON.stringify({
+        from: 'jsontosdk@west0n.top',
+        to: [email],
+        subject: 'Welcome to jsontosdk — quick question',
+        text: replyText,
+      }),
+    });
+    if (!replyRes.ok) {
+      const detail = await replyRes.text().catch(() => '');
+      console.error(
+        `waitlist auto-reply non-2xx (${replyRes.status}): ${detail.slice(0, 200)}`,
+      );
+    }
+  } catch (e: any) {
+    console.error('waitlist auto-reply threw:', e?.message || e);
+  }
+
   return Response.json(
     { ok: true },
     { headers: { 'x-ratelimit-remaining': String(rl.remaining) } },
